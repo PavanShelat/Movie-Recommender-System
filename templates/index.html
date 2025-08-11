@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommender</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">🎬 Movie Recommender</h1>
+
+        <div class="mb-6">
+            <label for="movieTitle" class="block text-gray-700 text-sm font-semibold mb-2">Enter a movie title:</label>
+            <input
+                type="text"
+                id="movieTitle"
+                class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., Avatar"
+            >
+        </div>
+
+        <button
+            onclick="getRecommendations()"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        >
+            Get Recommendations
+        </button>
+
+        <div id="loadingIndicator" class="text-center text-gray-500 mt-4 hidden">
+            <svg class="animate-spin h-5 w-5 mr-3 inline-block text-blue-500" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Loading recommendations...
+        </div>
+
+        <div id="recommendationsList" class="mt-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Recommended Movies:</h2>
+            <ul class="list-disc list-inside text-gray-700 space-y-2" id="movieList">
+                <!-- Recommendations will be inserted here by JavaScript -->
+                <li class="text-gray-500 italic">Enter a movie above to see recommendations.</li>
+            </ul>
+        </div>
+
+        <div id="messageBox" class="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg hidden" role="alert">
+            <!-- Error messages will be displayed here -->
+        </div>
+
+    </div>
+
+    <script>
+        // Function to display messages (instead of alert)
+        function showMessage(message, type = 'error') {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden');
+            if (type === 'error') {
+                messageBox.classList.remove('bg-green-100', 'border-green-400', 'text-green-700');
+                messageBox.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+            } else { // For success or info messages
+                messageBox.classList.remove('bg-red-100', 'border-red-400', 'text-red-700');
+                messageBox.classList.add('bg-green-100', 'border-green-400', 'text-green-700');
+            }
+        }
+
+        // Function to hide messages
+        function hideMessage() {
+            document.getElementById('messageBox').classList.add('hidden');
+        }
+
+        // Function to show/hide loading indicator
+        function showLoading() {
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingIndicator').classList.add('hidden');
+        }
+
+        async function getRecommendations() {
+            hideMessage();
+            showLoading();
+            const movieTitle = document.getElementById('movieTitle').value.trim();
+            const movieList = document.getElementById('movieList');
+            movieList.innerHTML = ''; // Clear previous recommendations
+
+            if (!movieTitle) {
+                showMessage('Please enter a movie title.');
+                hideLoading();
+                return;
+            }
+
+            try {
+                const response = await fetch('/recommend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ movie_title: movieTitle }),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.recommendations && data.recommendations.length > 0) {
+                        data.recommendations.forEach(movie => {
+                            const li = document.createElement('li');
+                            li.textContent = movie;
+                            movieList.appendChild(li);
+                        });
+                    } else {
+                        movieList.innerHTML = `<li class="text-gray-500 italic">${data.message || 'No recommendations found for this movie.'}</li>`;
+                    }
+                } else {
+                    const errorData = await response.json();
+                    showMessage(errorData.error || 'An error occurred while fetching recommendations.');
+                    movieList.innerHTML = `<li class="text-gray-500 italic">Failed to load recommendations.</li>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Network error or server unreachable. Please try again.');
+                movieList.innerHTML = `<li class="text-gray-500 italic">Failed to load recommendations.</li>`;
+            } finally {
+                hideLoading();
+            }
+        }
+    </script>
+</body>
+</html>
